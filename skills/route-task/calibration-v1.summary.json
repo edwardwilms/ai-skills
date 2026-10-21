@@ -1,0 +1,93 @@
+{
+  "questions_version": "v1",
+  "routes_version": "v1",
+  "measured_at": "2026-10-21T14:06:17+00:00",
+  "n": 192,
+  "cost_usd": 0.08943,
+  "usd_per_decision": 0.000466,
+  "latency_ms": {
+    "p50": 913,
+    "p95": 1326,
+    "max": 1505
+  },
+  "_route_fields_measured_under": "the policy as of measured_at; sweep.py recomputes them against current routes.v1.json",
+  "by_class": {
+    "review": 52,
+    "ops-infra": 49,
+    "doc-explain": 31,
+    "architecture": 24,
+    "mechanical-edit": 16,
+    "bug-hunt": 14,
+    "huge-context-digest": 4,
+    "refactor": 1,
+    "bulk-scan": 1
+  },
+  "by_tier": {
+    "frontier": 134,
+    "cheap": 47,
+    "work": 6,
+    "bulk": 5
+  },
+  "by_fleet": {
+    "claude": 122,
+    "codex": 65,
+    "gemini": 5
+  },
+  "by_complexity": {
+    "involved": 106,
+    "routine": 51,
+    "hard": 23,
+    "trivial": 12
+  },
+  "cheap_or_bulk_share": 0.271,
+  "frontier_share": 0.698,
+  "jury_share": 0.802,
+  "downgrades": 0,
+  "distributions": {
+    "confidence": {
+      "p10": 0.39,
+      "median": 0.78,
+      "p75": 0.97,
+      "p90": 1.0,
+      "fires_at": {
+        "0.4": 0.891,
+        "0.5": 0.792,
+        "0.6": 0.682,
+        "0.7": 0.589,
+        "0.8": 0.479
+      }
+    },
+    "verifiable": {
+      "p10": 0.22,
+      "median": 0.43,
+      "p75": 0.56,
+      "p90": 0.66,
+      "fires_at": {
+        "0.5": 0.37,
+        "0.55": 0.302,
+        "0.7": 0.052
+      }
+    },
+    "second_opinion": {
+      "p10": 0.46,
+      "median": 0.62,
+      "p75": 0.68,
+      "p90": 0.74,
+      "fires_at": {
+        "0.55": 0.734,
+        "0.7": 0.214,
+        "0.8": 0.021
+      }
+    },
+    "reversible": {
+      "p10": 0.64,
+      "median": 0.73,
+      "p75": 0.77,
+      "p90": 0.81,
+      "fires_at": {
+        "0.5": 1.0,
+        "0.6": 0.984
+      }
+    }
+  }
+}

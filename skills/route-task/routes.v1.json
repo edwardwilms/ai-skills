@@ -1,0 +1,301 @@
+{
+  "version": "v1",
+  "created": "2026-10-21",
+  "_what": "The routing policy. jev's answer is DATA; this file is the decision. A third-party classifier does not get to set policy, so every threshold lives here, versioned, with where its value came from.",
+  "_asymmetry": "The core rule: downgrade only when the evidence is strong AND the mistake is cheap; upgrade on any doubt. A cheap misroute that has to be redone on a frontier model costs twice and destroys trust in the router. An expensive misroute costs quota. Fail EXPENSIVE, by design.",
+  "fleets": {
+    "claude": {
+      "billing": "subscription",
+      "scarce_resource": "quota (5h window + weekly)",
+      "marginal_usd": 0,
+      "_strength": "the only fleet with this repo's MCP servers, skills and hooks wired in; the default for work that touches the codebase through tools",
+      "tiers": {
+        "cheap": {
+          "model": "haiku",
+          "effort": "low",
+          "agent": "route-scout"
+        },
+        "work": {
+          "model": "sonnet",
+          "effort": "medium",
+          "agent": "route-builder"
+        },
+        "frontier": {
+          "model": "opus",
+          "effort": "xhigh",
+          "agent": "route-deep"
+        }
+      }
+    },
+    "codex": {
+      "billing": "subscription",
+      "scarce_resource": "quota (independent of Claude's)",
+      "marginal_usd": 0,
+      "_strength": "a SECOND zero-marginal-dollar fleet. Idle capacity while Claude's window drains is the single biggest waste this router exists to fix. Also the independent reviewer in the loop full-review already proved.",
+      "_verified": "codex-cli 0.163.0, logged in by ChatGPT subscription (auth.json has tokens and a null OPENAI_API_KEY), 2026-10-21",
+      "model_source": "~/.codex/models_cache.json - read at runtime, never hardcoded. A model name baked into a file ages silently.",
+      "tiers": {
+        "cheap": {
+          "model": "gpt-6-luna",
+          "effort": "low"
+        },
+        "work": {
+          "model": "gpt-6.1-sol",
+          "effort": "medium"
+        },
+        "frontier": {
+          "model": "gpt-6-astra",
+          "effort": "xhigh"
+        }
+      }
+    },
+    "gemini": {
+      "billing": "metered",
+      "scarce_resource": "US dollars, and free-tier rate limits",
+      "marginal_usd": "per token",
+      "_strength": "1,048,576-token input window. The only fleet that can swallow a huge corpus in one shot.",
+      "_limits_measured_2026_10_21": [
+        "FLASH ONLY on this key: gemini-pro-latest and gemini-3.1-pro-preview both answer 429, gemini-4-argon answers TerminalQuotaError. Do not route frontier work here.",
+        "The CLI charges a ~12,200-token FLOOR per invocation (measured: 12,206 prompt tokens for the 5-token prompt 'Reply with exactly: OK'). The direct API charged 5 tokens for the same prompt - a ~2,400x difference. So: CLI for one big agentic digest where the floor is noise; direct API for many small questions."
+      ],
+      "tiers": {
+        "cheap": {
+          "model": "gemini-3.8-flash",
+          "effort": null,
+          "transport": "api"
+        },
+        "bulk": {
+          "model": "gemini-3.8-flash",
+          "effort": null,
+          "transport": "cli"
+        }
+      },
+      "_pin_vs_alias": "Pinned on purpose. gemini-flash-latest would change behaviour under the ledger with no diff, and then route comparisons across weeks would be measuring two different models. Drift check: compare this pin against gemini-flash-latest and gemini-pro-latest periodically."
+    }
+  },
+  "classes": {
+    "bulk-scan": {
+      "tier": "bulk",
+      "fleet": "gemini",
+      "allow_downgrade": true,
+      "auto_dispatch_safe": true,
+      "_why": "shallow per-item judgement over many items; the 1M window does in one call what costs a frontier model many tool round-trips, and spends no subscription quota at all"
+    },
+    "huge-context-digest": {
+      "tier": "bulk",
+      "fleet": "gemini",
+      "allow_downgrade": true,
+      "auto_dispatch_safe": true,
+      "_why": "the only fleet whose window fits the input; the CLI token floor is noise at this size"
+    },
+    "mechanical-edit": {
+      "tier": "cheap",
+      "fleet": "codex",
+      "allow_downgrade": true,
+      "auto_dispatch_safe": true,
+      "_why": "known change, mechanically checkable; spending Claude quota on it is the waste this router exists to stop"
+    },
+    "doc-explain": {
+      "tier": "cheap",
+      "fleet": "codex",
+      "allow_downgrade": true,
+      "auto_dispatch_safe": true,
+      "_why": "cheap and reversible; prose that is wrong is obvious to the reader, which is a verification channel of its own"
+    },
+    "test-writing": {
+      "tier": "work",
+      "fleet": "claude",
+      "allow_downgrade": true,
+      "auto_dispatch_safe": true,
+      "_why": "needs this repo's conventions and the existing suite, so it wants the fleet with the repo wired in; and the suite itself verifies the output"
+    },
+    "refactor": {
+      "tier": "work",
+      "fleet": "claude",
+      "allow_downgrade": true,
+      "auto_dispatch_safe": true,
+      "_why": "behaviour must not change, which the test suite can check - but only if one exists; see thresholds.require_test_runner_to_downgrade"
+    },
+    "bug-hunt": {
+      "tier": "work",
+      "fleet": "claude",
+      "effort_override": "high",
+      "allow_downgrade": false,
+      "auto_dispatch_safe": true,
+      "upgrade_at_complexity": "hard",
+      "_why": "diagnosis is where a cheap model burns two budgets: its own, and the frontier run that redoes it. No downgrade, and it climbs to frontier as soon as the cause is genuinely unknown."
+    },
+    "architecture": {
+      "tier": "frontier",
+      "fleet": "claude",
+      "allow_downgrade": false,
+      "auto_dispatch_safe": true,
+      "jury": true,
+      "_why": "wrong answers here are built upon before anyone notices; the second opinion is nearly free because two of the three jurors are subscription fleets"
+    },
+    "review": {
+      "tier": "work",
+      "fleet": "codex",
+      "fleet_pinned": true,
+      "allow_downgrade": false,
+      "auto_dispatch_safe": true,
+      "upgrade_at_complexity": "involved",
+      "jury": true,
+      "_why_fleet_pinned": "Found by sweep.py immediately after the tier change above, 2026-10-21: dropping review from frontier to work moved it INTO the band where force_claude_when_needs_repo_context and quota pressure apply, and review scores high on needs_repo_context - so 5 reviews silently migrated from Codex to Claude (codex 65 -> 60 in the sweep). That defeats the entire point: the reviewer must not be the author. For this class the fleet is a REQUIREMENT, not a preference, and no optimisation may trade it away.",
+      "_why": "the reviewer must not be the author. full-review already proved this loop: Codex reviews, Claude fixes. Zero marginal dollars on both sides.",
+      "_measured_2026_10_21": "Was tier=frontier. Calibration over 192 real prompts: review is 27.1% of my work, and 15% of those reviews are trivial/routine - 4.2% of all work that was being sent to gpt-6-astra+xhigh for no reason. Moved to work tier with an upgrade at 'involved' (which is 85% of reviews, so the expensive path is still the common one). A weaker review costs a MISSED FINDING, which CI, the next reviewer, or I will catch; that bounded, detectable failure is what makes the cheaper floor defensible here and not in ops-infra."
+    },
+    "ops-infra": {
+      "tier": "frontier",
+      "fleet": "claude",
+      "effort_override": "high",
+      "allow_downgrade": false,
+      "auto_dispatch_safe": false,
+      "_why": "touches CI, deploys, secrets and migrations - the places where 'reversible' is a lie. Never auto-dispatched, even if the automatic mode is ever enabled.",
+      "_measured_2026_10_21": "DECLINED a saving here on purpose. Same calibration: ops-infra is 25.5% of my work and 39% of it is trivial/routine - 9.9% of all work, more than twice what the review change moved. Dropping it to the work tier would have taken frontier from 69.8% to 55.7%. Refused: a wrong ops-infra answer writes to a live system, and the failure is neither bounded nor detectable in time. The bigger number was the worse decision, and this field exists so nobody re-derives it from the number alone."
+    }
+  },
+  "thresholds": {
+    "downgrade_requires": {
+      "verifiable_at_least": 0.55,
+      "max_complexity_label": "routine",
+      "kind_confidence_at_least": 0.6,
+      "reversible_at_least": 0.6,
+      "_origin": "MEASURED 2026-10-21 over 192 real prompts (calibration-v1.json, replayed with sweep.py). verifiable was 0.70: reachable by only 5.2% of prompts, because the distribution is p25=0.31 median=0.42 p75=0.56 p90=0.66 - the gate was effectively switched off. Now 0.55, just under p75. confidence 0.6 passes 68.2% and is kept. max_complexity stays 'routine' although 'involved' is the modal answer (55.2%): 'involved' is defined as 'several moving parts, needs care', which is not cheap-model work.",
+      "_the_uncomfortable_finding": "These four thresholds act on 0.5% of my actual work - ONE prompt in 192. Measured: the classes that permit a downgrade (doc-explain, mechanical-edit, bulk-scan, huge-context-digest) already START at the cheap or bulk tier, so there is nothing below them to drop to; and the classes that dominate my work (review, ops-infra, architecture, bug-hunt = 72%) forbid downgrading by policy. The real lever is the class->tier map above, NOT this gate. The gate stays because it costs nothing and is the safety rail for workloads that are not mine - but it must not be described as the mechanism that saves anything here. sweep.py reproduces this: every threshold row, including a deliberately loose one, returns the same 27.1% cheap share and zero downgrades."
+    },
+    "require_test_runner_to_downgrade": {
+      "value": true,
+      "_what": "A cheap model may only take verifiable work if the verification actually EXISTS here. state.repo.test_runner == 'none' blocks every downgrade.",
+      "_why": "'verifiable' is jev's judgement about the TASK; whether this repo can run the check is a fact about the MACHINE. Treating the first as the second is how 'verifiable' becomes a word nobody checks - a guard anchored in prose, failing open."
+    },
+    "force_claude_when_needs_repo_context": {
+      "value": 0.5,
+      "_what": "Above this, the fleet is pinned to Claude regardless of quota pressure.",
+      "_why": "Claude is the only fleet with this repo's MCP servers, skills and memory wired in. Sending context-hungry work to another fleet to save quota just moves the cost into round-trips and re-reading.",
+      "_origin": "DECLARED GUESS, 2026-10-21."
+    },
+    "upgrade_to_frontier_at_complexity": {
+      "label": "hard",
+      "_origin": "DECLARED GUESS, 2026-10-21. 'hard' is defined in questions.v1.json as 'cause or correct design is genuinely unknown' - which is exactly the condition under which a work-tier model produces a confident wrong answer."
+    },
+    "jury_at_second_opinion": {
+      "value": 0.7,
+      "announce_only_when_signal_added": true,
+      "_origin": "MEASURED 2026-10-21 over 192 prompts. Was 0.55 on the reasoning that two of three jurors are free, so an unnecessary second opinion costs quota rather than money. The data refused it: at 0.55 a jury was suggested on 80.2% of turns, which is not advice, it is noise. The second_opinion distribution is tight (p10=0.46 median=0.62 p90=0.74), so the operating points are few: 0.55 -> the signal adds 40.6% on top of the classes that always want a jury; 0.70 -> adds 7.8%; 0.80 -> adds exactly 0. 0.70 is the only value where the signal says something and still says it sometimes.",
+      "_why_announce_only_when_added": "review and architecture carry jury:true by class and are 39.6% of my work, so printing 'jury suggested' for them is a constant - it is already implied by the route. The hook prints it only when the second_opinion signal RAISED it above the class default. A line that appears on 2 turns in 5 regardless of content trains me to ignore the whole line."
+    },
+    "hook_abstains_below_confidence": {
+      "value": 0.5,
+      "_what": "Below this the hook prints NOTHING. It still writes a ledger line, recording that it abstained.",
+      "_origin": "MEASURED 2026-10-21. 31.8% of real prompts land under the 0.6 confidence gate, and reading them explains why: they are conversational follow-ups - 'pode fazer o que esta faltando para ficar 100%', 'quando finalizar, pode continuar com a outra frente', 'pode fazer as correcoes de forma segura e testada'. They refer to a thread the classifier cannot see, so no amount of prompt text would classify them. 0.5 silences 20.8% of turns. Advising on a coin flip is worse than silence: it spends credit, costs a line of context, and teaches me to distrust the advice that IS good."
+    },
+    "quota_pressure": {
+      "enabled": true,
+      "window_hours": 5,
+      "switch_when_share_exceeds": 0.6,
+      "_what": "On a tie in fitness between two subscription fleets, send the work to the one with the smaller share of dispatches in the trailing window. This is what turns two subscriptions into one budget.",
+      "_honest_limit": "Neither Claude Max nor Codex exposes remaining quota through any API. This measures what I SPENT (dispatch counts from the ledger), not what is LEFT. It is a proxy, and the report says so rather than printing a fake gauge.",
+      "_origin": "DECLARED GUESS, 2026-10-21."
+    }
+  },
+  "fallback": {
+    "_what": "Used when jev is unavailable. A router that is down must never stop the work.",
+    "default": {
+      "tier": "work",
+      "fleet": "claude"
+    },
+    "keyword_rules": [
+      {
+        "any": [
+          "deploy",
+          "terraform",
+          "ci ",
+          "migration",
+          "secret",
+          "docker",
+          "infra"
+        ],
+        "class": "ops-infra"
+      },
+      {
+        "any": [
+          "review",
+          "pr #",
+          "diff",
+          "regression"
+        ],
+        "class": "review"
+      },
+      {
+        "any": [
+          "why",
+          "explain",
+          "how does",
+          "what is"
+        ],
+        "class": "doc-explain"
+      },
+      {
+        "any": [
+          "test",
+          "pytest",
+          "vitest",
+          "coverage"
+        ],
+        "class": "test-writing"
+      },
+      {
+        "any": [
+          "failing",
+          "broken",
+          "error",
+          "traceback",
+          "bug"
+        ],
+        "class": "bug-hunt"
+      },
+      {
+        "any": [
+          "design",
+          "architecture",
+          "approach",
+          "trade-off",
+          "plan"
+        ],
+        "class": "architecture"
+      },
+      {
+        "any": [
+          "rename",
+          "bump",
+          "reformat",
+          "move",
+          "everywhere"
+        ],
+        "class": "mechanical-edit"
+      },
+      {
+        "any": [
+          "list all",
+          "find all",
+          "count",
+          "inventory",
+          "grep",
+          "sweep"
+        ],
+        "class": "bulk-scan"
+      }
+    ],
+    "_why_keywords_are_ok_here": "This table is deliberately dumb. It is the degraded mode, and a dumb degraded mode that always answers beats a clever one that sometimes does not. It never downgrades: the fallback cannot read confidence, so it has no basis for the asymmetric rule."
+  },
+  "allowlist": {
+    "_what": "Projects where the hook may call jev at all. Outside this list it stays SILENT - no classification, no charge, no ledger line. This, not the scrubber, is the real privacy control.",
+    "_how": "Matched against the basename of the git toplevel. Empty list = the hook is silent everywhere, which is the safe default for a fresh install.",
+    "projects": [
+      "integrations-assistant",
+      "ai-skills"
+    ],
+    "_chosen": "2026-10-21. integrations-assistant is where the work is (311 prompts of history) and the scrubber was calibrated against it; ai-skills is this router's own repo - public, zero client content, and the cheapest place to watch the hook behave. projeto_integracoes was deliberately LEFT OUT despite being the largest population (402 prompts): it is where the client deliverable filenames and the quoted policy content came from, and the scrubber has not been calibrated against it."
+  }
+}

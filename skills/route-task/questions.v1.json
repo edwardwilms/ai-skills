@@ -1,0 +1,51 @@
+{
+  "version": "v1",
+  "created": "2026-10-21",
+  "_what": "The jev question set the router sends. ONE /api/v1/decide call answers all six: you pay per input token and the state is the expensive part, so six questions about one state cost barely more than one.",
+  "_calibration": "calibration-v1.json records what this set scored against real prompt history. Change a criterion => bump the version, re-run calibrate.py, and keep both files: thresholds tuned against v1 do not transfer to v2.",
+  "questions": {
+    "kind": {
+      "type": "choice",
+      "instructions": "What kind of software-development task is this? Judge the work being asked for, not the tone. If the task names a concrete defect to diagnose, prefer bug-hunt over refactor.",
+      "criteria": {
+        "bulk-scan": "Sweep many files or records to find, count, list or inventory occurrences. Per-item judgement is shallow or mechanical.",
+        "mechanical-edit": "Apply a known, repetitive change: rename, reformat, bump a version, move files, update an import everywhere.",
+        "test-writing": "Write, extend or repair tests for behaviour that already exists or was just built.",
+        "bug-hunt": "Something is broken, failing or behaving wrongly and the cause is not yet known. Diagnosis is the work.",
+        "refactor": "Restructure existing code without intending to change its behaviour.",
+        "architecture": "Decide how to structure something: a design choice, a trade-off between approaches, a plan for new work.",
+        "review": "Judge code that is already written - find defects, risks or regressions in a diff, a PR or a file.",
+        "doc-explain": "Explain existing code or behaviour, answer a question about the codebase, or write documentation.",
+        "ops-infra": "CI, build, deploy, containers, infrastructure-as-code, secrets, database migrations, environment configuration.",
+        "huge-context-digest": "Summarise, extract from or answer questions over a large body of text, logs or many files at once."
+      }
+    },
+    "complexity": {
+      "type": "score",
+      "instructions": "How much reasoning does doing this WELL require? Judge the work, not how long the request is.",
+      "criteria": [
+        "trivial: one obvious step, no design choice, hard to get wrong",
+        "routine: a known pattern applied to a few places, no unknowns",
+        "involved: several moving parts or a non-obvious interaction; needs care",
+        "hard: cause or correct design is genuinely unknown; needs investigation",
+        "deep: cross-cutting, and a wrong answer is expensive and awkward to undo"
+      ]
+    },
+    "verifiable": {
+      "type": "noul",
+      "instructions": "Could the result be checked MECHANICALLY - by a test suite, a type checker, a linter, a build, or a diff that either matches or does not? Answer no if judging the result needs human taste or domain knowledge."
+    },
+    "reversible": {
+      "type": "noul",
+      "instructions": "If the result is wrong, is undoing it cheap and local - a revert, a re-run, a discarded branch? Answer no if it writes to a live system, mutates data, publishes something, or other work would be built on top of it before anyone notices."
+    },
+    "needs_repo_context": {
+      "type": "noul",
+      "instructions": "Does doing this require reading a substantial amount of this specific codebase - its conventions, its call graph, its existing tests - rather than general knowledge plus the text of the request?"
+    },
+    "second_opinion": {
+      "type": "noul",
+      "instructions": "Would an independent model, reasoning separately, materially reduce the risk of a wrong answer here? Answer yes when the task has a defensible-but-wrong failure mode that a single reviewer would plausibly miss."
+    }
+  }
+}

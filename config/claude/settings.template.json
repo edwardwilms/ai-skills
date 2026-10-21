@@ -45,7 +45,28 @@
     "defaultMode": "auto"
   },
   "model": "opus[1m]",
+  "_hooks_note": [
+    "The route-task entries below carry a PLACEHOLDER path. Hook commands are not",
+    "reliably tilde-expanded, so they need an absolute one - run install.ps1 (or",
+    "install.sh) and it prints the block with the path and interpreter resolved for",
+    "this machine. Both hooks fail OPEN by design: no key, no network, bad JSON or a",
+    "project outside the allowlist all exit 0 with no output, so a broken router can",
+    "never cost a turn.",
+    "The 'rtk hook claude' entry predates route-task and needs the rtk binary; the",
+    "installers warn when it is absent rather than quietly wiring a dead hook."
+  ],
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python <ABSOLUTE>/route-task/scripts/route_hook.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -53,6 +74,16 @@
           {
             "type": "command",
             "command": "rtk hook claude"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python <ABSOLUTE>/route-task/scripts/agent_hook.py",
+            "timeout": 5
           }
         ]
       }

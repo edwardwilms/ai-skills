@@ -1,3 +1,13 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# Route-task: what must never reach a PUBLIC repo.
+# The ledger and the full calibration hold my prompts. They are scrubbed, which
+# removes ids, paths, URLs, filenames and quoted content - not business context.
+# The committed .summary.json next to the calibration carries the aggregates,
+# which is what the measured thresholds in routes.v1.json need to be checkable.
+route-ledger.jsonl
+skills/route-task/calibration-*.json
+!skills/route-task/calibration-*.summary.json
+.env
